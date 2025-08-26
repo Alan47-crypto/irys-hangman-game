@@ -83,6 +83,12 @@ export function HangmanGame({ provider }) {
       setTxStatus('pending');
       try {
         const ethersProvider = new ethers.BrowserProvider(provider);
+          const network = await ethersProvider.getNetwork();
+        if (network.chainId !== 1270) {
+            setStatusText("Wrong Network! Switch to Irys Testnet.");
+            setTxStatus('error');
+            return; // Stop the function if on the wrong network
+        }
         const signer = await ethersProvider.getSigner();
         const contract = new ethers.Contract(contractAddress, contractAbi, signer);
         const tx = await contract.addScore(selectedWord, finalPoints, solveTime);
