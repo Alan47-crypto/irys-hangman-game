@@ -1,12 +1,14 @@
 // src/App.jsx
 import { useConnectWallet, useSetChain } from '@web3-onboard/react';
-import { HangmanGame } from './HangmanGame.jsx';
-import { Leaderboard } from './Leaderboard.jsx';
-import './App.css';
 import { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
 
-const IRYS_CHAIN_ID = '0x4f6'; // Irys Testnet, lowercase hex
+import { HangmanGame } from './HangmanGame.jsx';
+import { Leaderboard } from './Leaderboard.jsx';
+import { HowToPlayModal } from './HowToPlayModal';
+import './App.css';
+
+const IRYS_CHAIN_ID = '0x4f6'; // Irys Testnet (1270) in hex, lowercase
 
 const IRYS_CHAIN_PARAMS = {
   chainId: IRYS_CHAIN_ID,
@@ -16,6 +18,7 @@ const IRYS_CHAIN_PARAMS = {
   blockExplorerUrls: ['https://testnet-explorer.irys.xyz']
 };
 
+// Helper: switch/add chain (MetaMask-friendly: non-empty blockExplorerUrls)
 const handleSwitchNetwork = async (wallet, setChain, setSwitchError) => {
   setSwitchError(null);
   try {
@@ -120,20 +123,28 @@ function NetworkGuard({ children, wallet, connecting, connect, connectedChain })
 function App() {
   const [{ wallet, connecting }, connect, disconnect] = useConnectWallet();
   const [{ connectedChain }, setChain] = useSetChain();
+
   const [balance, setBalance] = useState('');
-  const videoRef = useRef(null);
   const [switchError, setSwitchError] = useState(null);
 
+  // use a counter to re-trigger modal each click
+  const [helpTick, setHelpTick] = useState(0);
+
+  const videoRef = useRef(null);
+
+  // Slow down background video a touch
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = 0.5;
   }, []);
 
+  // Auto-try to switch after connect if wrong chain
   useEffect(() => {
     if (wallet && connectedChain && connectedChain.id !== IRYS_CHAIN_ID) {
       handleSwitchNetwork(wallet, setChain, setSwitchError);
     }
   }, [wallet, connectedChain, setChain]);
 
+  // Balance fetch (only on correct chain)
   useEffect(() => {
     let cancelled = false;
     const fetchBalance = async () => {
@@ -160,63 +171,69 @@ function App() {
   return (
     <div className="container">
       <video ref={videoRef} autoPlay loop muted playsInline id="background-video">
-   <source src="/background-loop.mp4" type="video/mp4" />
- </video>
+        <source src="/background-loop.mp4" type="video/mp4" />
+      </video>
 
       <header>
         <div className="header-left" />
         <h1 className="header-center">Irys Hangman</h1>
         <div className="header-right">
-          {/* NO connect/switch buttons in header now */}
+          {/* Help "?" button always available */}
+          <button className="help-button" onClick={() => setHelpTick(t => t + 1)}>?</button>
+
+          {/* No connect/switch buttons in header. Only account info when ready */}
           {wallet && connectedChain?.id === IRYS_CHAIN_ID && (
             <AccountInfo wallet={wallet} balance={balance} disconnect={disconnect} />
           )}
           {switchError && <div className="error-message">{switchError}</div>}
         </div>
       </header>
-<main>
-  <NetworkGuard
-    wallet={wallet}
-    connecting={connecting}
-    connect={connect}
-    connectedChain={connectedChain}
-  >
-    <div
-      className="main-content"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(500px, 800px) minmax(320px, 400px)',
-        columnGap: '1.25rem',
-        alignItems: 'stretch'
-      }}
-    >
-      <div
-        className="game-wrapper"
-        style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
-      >
-        <HangmanGame provider={wallet?.provider} />
-      </div>
 
-      <div
-        className="leaderboard-wrapper"
-        style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}
-      >
-        <div className="leaderboard-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          <Leaderboard provider={wallet?.provider} />
-        </div>
-      </div>
-    </div>
-  </NetworkGuard>
-</main>
+      <main>
+        <NetworkGuard
+          wallet={wallet}
+          connecting={connecting}
+          connect={connect}
+          connectedChain={connectedChain}
+        >
+          <div
+            className="main-content"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(500px, 800px) minmax(320px, 400px)',
+              columnGap: '1.25rem',
+              alignItems: 'stretch'
+            }}
+          >
+            <div
+              className="game-wrapper"
+              style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
+            >
+              <HangmanGame provider={wallet?.provider} />
+            </div>
 
-{/* ✅ Footer OUTSIDE <main> so it centers properly */}
-<footer className="credit">
-  Created with 🩵 by{" "}
-  <a href="https://x.com/0xKangLiu" target="_blank" rel="noopener noreferrer">
-    Alan
-  </a>
-</footer>
+            <div
+              className="leaderboard-wrapper"
+              style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}
+            >
+              <div className="leaderboard-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                <Leaderboard provider={wallet?.provider} />
+              </div>
+            </div>
+          </div>
+        </NetworkGuard>
+      </main>
 
+      {/* Footer OUTSIDE <main> so it centers properly */}
+      <footer className="credit">
+        Created with 🩵 by{' '}
+        <a href="https://x.com/0xKangLiu" target="_blank" rel="noopener noreferrer">
+          Alan
+        </a>
+      </footer>
+
+      {/* Modal mounts once and can be re-opened via the "?" button (counter trigger) */}
+      <HowToPlayModal trigger={helpTick} />
     </div>
   );
 }
