@@ -4,6 +4,7 @@
   --irys-light: #f1f1f1;
   --irys-secondary-accent: #338672;
   --color-incorrect: #FF5555;
+  --color-error: #ff6b6b;
 }
 
 body {
@@ -49,19 +50,19 @@ body {
   z-index: 1;
 }
 
-/* --- FINAL HEADER STYLES --- */
+/* --- HEADER --- */
 header {
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr auto 1fr; /* 3 columns: left-spacer | title | right-spacer */
+  grid-template-columns: 1fr auto 1fr; /* left spacer | title | right area */
   align-items: center;
   margin-bottom: 2rem;
 }
 
-.header-left { /* Invisible spacer to balance the layout */ }
+.header-left { /* spacer */ }
 
 .header-center {
-  grid-column: 2; /* Title is always in the middle column */
+  grid-column: 2;
   text-align: center;
   color: var(--irys-green);
   font-size: 2.5rem;
@@ -70,12 +71,12 @@ header {
 }
 
 .header-right {
-  grid-column: 3; /* Button is always in the right column */
+  grid-column: 3;
   display: flex;
   justify-content: flex-end;
 }
-/* --- END HEADER STYLES --- */
 
+/* Connect button (big green one in the center prompt) */
 .connect-button {
   background-color: var(--irys-green);
   color: var(--irys-dark);
@@ -88,7 +89,9 @@ header {
   transition: transform 0.2s;
   white-space: nowrap;
 }
+.connect-button:hover { transform: scale(1.03); }
 
+/* Account pill (shown in header when connected) */
 .account-info-wrapper {
   display: flex;
   align-items: center;
@@ -101,16 +104,11 @@ header {
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 }
-
 .account-info-wrapper:hover {
   border-color: var(--irys-green);
   background-color: rgba(107, 255, 217, 0.1);
 }
-
-.account-info-wrapper .balance {
-  padding: 6px 12px;
-}
-
+.account-info-wrapper .balance { padding: 6px 12px; }
 .account-info-wrapper .address {
   display: flex;
   align-items: center;
@@ -119,53 +117,61 @@ header {
   padding: 6px 12px;
   border-radius: 15px;
 }
+.avatar { width: 20px; height: 20px; border-radius: 50%; }
 
-.avatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-}
-
+/* --- LAYOUT --- */
 main {
   flex-grow: 1;
   display: flex;
-  align-items: center; /* Vertically centers the content block */
+  align-items: center; /* center the main content block vertically */
 }
 
 .main-content {
+  /* NOTE: App.jsx sets grid styles inline (Option B). This block is kept minimal. */
   width: 100%;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: flex-start; /* Aligns top of game and leaderboard */
-  gap: 4rem;
-  flex-wrap: wrap; 
 }
 
-.game-wrapper {
-  flex: 3;
-  min-width: 500px;
-  max-width: 800px;
-}
-
+.game-wrapper,
 .leaderboard-wrapper {
-  flex: 1;
-  min-width: 320px;
-  max-width: 400px;
+  height: 100%;
+  min-height: 0;            /* allow internal scroll areas to work */
+  display: flex;
+  flex-direction: column;
 }
 
+/* --- CONNECT / SWITCH PROMPTS --- */
 .connect-prompt {
   width: 100%;
   text-align: center;
 }
-
 .connect-prompt h2 {
-    font-size: 1.2rem;
-    color: var(--irys-secondary-accent);
+  font-size: 1.2rem;
+  color: var(--irys-secondary-accent);
 }
 
+/* dedicated style for the orange Switch Network button (only where used) */
+.switch-network-btn {
+  background-color: #ffa500;
+  color: var(--irys-dark);
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  white-space: nowrap;
+  margin-top: 1rem;
+}
+.switch-network-btn:hover {
+  background-color: #ff8c00;
+  transform: scale(1.05);
+}
+
+/* --- PANELS --- */
 .game-container,
-.leaderboard-container {
+.leaderboard-container,
+.leaderboard-only-top10 {
   border: 2px solid var(--irys-secondary-accent);
   padding: 2rem;
   border-radius: 15px;
@@ -173,26 +179,7 @@ main {
   text-align: center;
 }
 
-.leaderboard-container h2 {
-  margin-top: 0;
-}
-
-.leaderboard-container table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-}
-
-.leaderboard-container th, 
-.leaderboard-container td {
-  padding: 8px;
-  border-bottom: 1px solid var(--irys-secondary-accent);
-}
-
-.leaderboard-container th {
-  color: var(--irys-green);
-}
-
+/* --- GAME --- */
 #mascot-container {
   height: 150px;
   display: flex;
@@ -200,12 +187,10 @@ main {
   align-items: center;
   margin-bottom: 10px;
 }
-
 #mascot-image {
   max-height: 140px;
   transition: filter 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
-
 .stage-1 { filter: saturate(0.7); opacity: 0.9; }
 .stage-2 { filter: saturate(0.4); opacity: 0.8; }
 .stage-3 { filter: grayscale(0.5); opacity: 0.7; }
@@ -220,10 +205,13 @@ main {
   font-weight: bold;
   text-align: center;
 }
-
 .status-message.success {
   color: var(--irys-green);
   text-shadow: 0 0 8px rgba(107, 255, 217, 0.7);
+}
+.status-message.error {
+  color: var(--color-error);
+  text-shadow: 0 0 8px rgba(255, 107, 107, 0.5);
 }
 
 .word-display {
@@ -244,7 +232,6 @@ main {
   justify-content: center;
   gap: 0.5rem;
 }
-
 .keyboard button {
   background-color: var(--irys-light);
   color: var(--irys-dark);
@@ -257,28 +244,31 @@ main {
   cursor: pointer;
   transition: all 0.2s;
 }
-
 .keyboard button:disabled {
   background-color: #444;
   color: #888;
   cursor: not-allowed;
   opacity: 0.7;
 }
-
 .keyboard button:disabled.correct {
   background-color: var(--irys-green);
   color: var(--irys-dark);
   opacity: 0.7;
 }
-
 .keyboard button:disabled.incorrect {
   background-color: var(--color-incorrect);
   color: var(--irys-light);
   opacity: 0.7;
 }
 
+.game-over-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
 .reset-button {
-  margin-top: 2rem;
   padding: 1rem 2rem;
   font-size: 1.2rem;
   font-weight: bold;
@@ -289,30 +279,165 @@ main {
   cursor: pointer;
   transition: transform 0.2s;
 }
-/* Media Query for mobile devices (screens smaller than 768px) */
+.retry-button {
+  padding: 1rem 1.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: white;
+  background-color: var(--color-error);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.retry-button:hover {
+  background-color: #ff5252;
+  transform: scale(1.05);
+}
+
+/* --- LEADERBOARD (legacy table styles kept if you use them elsewhere) --- */
+.leaderboard-container h2 { margin-top: 0; }
+.leaderboard-container table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.leaderboard-container th,
+.leaderboard-container td {
+  padding: 8px;
+  border-bottom: 1px solid var(--irys-secondary-accent);
+}
+.leaderboard-container th { color: var(--irys-green); }
+/* Custom scrollbar only inside leaderboard */
+.leaderboard-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Chrome, Edge, Safari */
+.leaderboard-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.leaderboard-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.leaderboard-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--irys-green);
+  border-radius: 4px;
+  border: 2px solid rgba(26, 26, 26, 0.98); /* blends with bg */
+}
+
+/* Firefox */
+.leaderboard-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--irys-green) rgba(255, 255, 255, 0.05);
+}
+
+/* --- ERRORS --- */
+.error-message {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: rgba(255, 107, 107, 0.1);
+  border: 1px solid var(--color-error);
+  border-radius: 5px;
+  color: var(--color-error);
+  font-size: 0.9rem;
+}
+.error-message ul {
+  text-align: left;
+  margin: 10px 0;
+  padding-left: 20px;
+}
+.error-message li { margin-bottom: 5px; }
+
+.error-message li {
+  margin-bottom: 5px;
+}
+
+/* Leaderboard title with neon underline */
+.leaderboard-title {
+  margin: 0 0 1rem 0;
+  text-align: center;
+  font-size: 1.8rem;
+  color: var(--irys-green);
+  text-shadow: 0 0 8px rgba(107, 255, 217, 0.7);
+  position: relative;
+  padding-bottom: 6px;
+}
+
+.leaderboard-title::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 2px;
+  background: var(--irys-green);
+  box-shadow: 0 0 8px rgba(107, 255, 217, 0.8);
+  border-radius: 2px;
+}
+
+/* --- MOBILE --- */
 @media (max-width: 768px) {
-  .container {
-    padding: 1rem 1.5rem; /* Reduce overall padding on mobile */
-  }
+  .container { padding: 1rem 1.5rem; }
 
   header, .game-title {
-    font-size: 2rem; /* Make the main title smaller */
+    font-size: 2rem;
     margin-bottom: 1.5rem;
   }
-  
+
+  /* On mobile we stack columns; App.jsx’s inline grid is ignored by this override if desired */
   .main-content {
-    flex-direction: column; /* Force game and leaderboard to stack */
-    align-items: center; /* Center them in the column */
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
     gap: 2rem;
   }
 
   .game-wrapper, .leaderboard-wrapper {
-    min-width: 100%; /* Allow them to take the full width */
-    padding-top: 0; /* Remove the desktop padding for the leaderboard */
+    min-width: 100%;
+    padding-top: 0;
   }
 
   .word-display {
-    font-size: 2rem; /* Make the word display smaller */
+    font-size: 2rem;
     letter-spacing: 0.4rem;
   }
+
+  .game-over-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .reset-button, .retry-button {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  /* --- Credit Footer --- */
+footer.credit {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 1rem;
+  color: var(--irys-green) !important;  /* force neon green */
+  text-shadow: 0 0 8px rgba(107, 255, 217, 0.8);
+  font-weight: 500;
 }
+
+footer.credit a {
+  color: var(--irys-green) !important;
+  font-weight: bold;
+  text-decoration: none;
+  transition: text-shadow 0.3s ease, transform 0.2s ease;
+}
+
+footer.credit a:hover {
+  text-shadow: 0 0 12px rgba(107, 255, 217, 1);
+  transform: scale(1.05);
+}
+ }

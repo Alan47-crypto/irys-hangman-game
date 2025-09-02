@@ -1,0 +1,163 @@
+[
+  {
+    "type": "event",
+    "name": "NewScore",
+    "inputs": [
+      { "name": "player", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "word", "type": "string", "indexed": false, "internalType": "string" },
+      { "name": "points", "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "newTotalScore", "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "newWinStreak", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "StreakBroken",
+    "inputs": [
+      { "name": "player", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "function",
+    "name": "addScore",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "_word", "type": "string", "internalType": "string" },
+      { "name": "_points", "type": "uint256", "internalType": "uint256" },
+      { "name": "_solveTime", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "recordLoss",
+    "stateMutability": "nonpayable",
+    "inputs": [],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "getScoreHistory",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "internalType": "struct Leaderboard.Score[]",
+        "components": [
+          { "name": "player", "type": "address", "internalType": "address" },
+          { "name": "word", "type": "string", "internalType": "string" },
+          { "name": "points", "type": "uint32", "internalType": "uint32" },
+          { "name": "solveTime", "type": "uint24", "internalType": "uint24" },
+          { "name": "timestamp", "type": "uint40", "internalType": "uint40" }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "getScoresCount",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "uint256", "internalType": "uint256" }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "getScoreAt",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "index", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct Leaderboard.Score",
+        "components": [
+          { "name": "player", "type": "address", "internalType": "address" },
+          { "name": "word", "type": "string", "internalType": "string" },
+          { "name": "points", "type": "uint32", "internalType": "uint32" },
+          { "name": "solveTime", "type": "uint24", "internalType": "uint24" },
+          { "name": "timestamp", "type": "uint40", "internalType": "uint40" }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "getScoresSlice",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "offset", "type": "uint256", "internalType": "uint256" },
+      { "name": "limit", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "internalType": "struct Leaderboard.Score[]",
+        "components": [
+          { "name": "player", "type": "address", "internalType": "address" },
+          { "name": "word", "type": "string", "internalType": "string" },
+          { "name": "points", "type": "uint32", "internalType": "uint32" },
+          { "name": "solveTime", "type": "uint24", "internalType": "uint24" },
+          { "name": "timestamp", "type": "uint40", "internalType": "uint40" }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "getPlayerStats",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "player", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      { "name": "total", "type": "uint256", "internalType": "uint256" },
+      { "name": "streak", "type": "uint256", "internalType": "uint256" }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "allScores",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      { "name": "player", "type": "address", "internalType": "address" },
+      { "name": "word", "type": "string", "internalType": "string" },
+      { "name": "points", "type": "uint32", "internalType": "uint32" },
+      { "name": "solveTime", "type": "uint24", "internalType": "uint24" },
+      { "name": "timestamp", "type": "uint40", "internalType": "uint40" }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "totalScores",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      { "name": "", "type": "uint256", "internalType": "uint256" }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "winStreaks",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      { "name": "", "type": "uint256", "internalType": "uint256" }
+    ]
+  }
+]

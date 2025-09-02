@@ -9,16 +9,16 @@ import injectedModule from '@web3-onboard/injected-wallets';
 
 // --- Define the Irys Testnet for Web3-Onboard ---
 const irysTestnet = {
-  id: 1270,
+  id: '0x4F6', // Chain ID in hex for Irys Testnet (1270 in decimal)
   token: 'IRYS',
   label: 'Irys Testnet',
-  rpcUrl: 'https://testnet-rpc.irys.xyz/v1/execution-rpc',
+  rpcUrl: 'https://testnet-rpc.irys.xyz/v1/execution-rpc', // Verify this RPC URL is correct
 };
 
 // --- Initialize Web3-Onboard ---
 const injected = injectedModule();
 const web3Onboard = init({
-  wallets: [injected], // We are only enabling browser wallets like MetaMask
+  wallets: [injected],
   chains: [irysTestnet],
   appMetadata: {
     name: 'Irys Hangman',
