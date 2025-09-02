@@ -5,7 +5,6 @@ import { Leaderboard } from './Leaderboard.jsx';
 import './App.css';
 import { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
-import backgroundVideo from './assets/background-loop.mp4';
 
 const IRYS_CHAIN_ID = '0x4f6'; // Irys Testnet, lowercase hex
 
@@ -160,9 +159,9 @@ function App() {
 
   return (
     <div className="container">
-      <video ref={videoRef} autoPlay loop muted id="background-video">
-        <source src="/background-loop.mp4" type="video/mp4" />
-      </video>
+      <video ref={videoRef} autoPlay loop muted playsInline id="background-video">
+   <source src="/background-loop.mp4" type="video/mp4" />
+ </video>
 
       <header>
         <div className="header-left" />
