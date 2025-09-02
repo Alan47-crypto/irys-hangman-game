@@ -161,7 +161,7 @@ function App() {
   return (
     <div className="container">
       <video ref={videoRef} autoPlay loop muted id="background-video">
-        <source src={backgroundVideo} type="video/mp4" />
+        <source src="/background-loop.mp4" type="video/mp4" />
       </video>
 
       <header>
