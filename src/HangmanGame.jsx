@@ -94,7 +94,7 @@ export function HangmanGame({ provider }) {
     setTxError(null);
     setTxStatus('pending');
     try {
-      const { contract } = getSignerAndContract(provider); // ✅ new helper
+      const { contract } = await getSignerAndContract(provider);
       if (!contract) throw new Error('Wallet not connected');
 
       const tx = await contract.addScore(word, points, solveTime);
