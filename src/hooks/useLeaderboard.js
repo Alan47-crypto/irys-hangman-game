@@ -6,26 +6,21 @@ import { CONTRACT_ADDRESS } from '../lib/contract';
 
 /**
  * useLeaderboard(readProvider, pageSize?)
- * - readProvider: ethers.Provider (JsonRpcProvider or BrowserProvider)
+ * - readProvider: ethers Provider (JsonRpcProvider or BrowserProvider)
  * - pageSize: how many rows to fetch per page from getScoresSlice
  */
 export function useLeaderboard(readProvider, pageSize = 25) {
   const [rows, setRows] = useState([]);       // normalized Score[]
   const [total, setTotal] = useState(0);      // total on-chain count
-  const [offset, setOffset] = useState(0);    // next slice start
+  const [offset, setOffset] = useState(0);    // next slice start (from newest end)
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState(null);
   const [hasMore, setHasMore] = useState(false);
 
-  const makeContract = useCallback(async () => {
+  const makeContract = useCallback(() => {
     if (!readProvider) return null;
-
-    // If BrowserProvider (wallet), await getNetwork first to ensure ready
     try {
-      // ethers v6: both BrowserProvider and JsonRpcProvider extend AbstractProvider (Runner)
-      // We can pass the provider directly to Contract for view calls.
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, LeaderboardAbi, readProvider);
-      return contract;
+      return new ethers.Contract(CONTRACT_ADDRESS, LeaderboardAbi, readProvider);
     } catch (e) {
       console.error('Failed to create read-only contract:', e);
       setError(e);
@@ -36,7 +31,6 @@ export function useLeaderboard(readProvider, pageSize = 25) {
   const normalizeScore = (s) => ({
     player: s.player,
     word: s.word,
-    // support either uint32/uint24 packed -> returned as BigInt-like in v6
     points: Number(s.points ?? 0),
     solveTime: Number(s.solveTime ?? 0),
     timestamp: Number(s.timestamp ?? 0),
@@ -50,74 +44,99 @@ export function useLeaderboard(readProvider, pageSize = 25) {
     setError(null);
   }, []);
 
-  const loadPage = useCallback(async () => {
+  const loadPageOnce = useCallback(async () => {
     if (!readProvider) return;
     setLoading(true);
     setError(null);
 
     try {
-      const contract = await makeContract();
+      const contract = makeContract();
       if (!contract) throw new Error('No read provider available');
 
       // total rows
       const count = Number(await contract.getScoresCount());
-      if (count !== total && offset === 0 && rows.length === 0) {
-        setTotal(count);
-      } else if (count !== total) {
-        setTotal(count);
-      }
+      if (count !== total) setTotal(count);
 
       if (count === 0) {
         setRows([]);
         setHasMore(false);
-        setLoading(false);
         return;
       }
 
-      // we fetch newest first using slice from the end
-      // compute window [start, end)
+      // newest-first paging from the end of the array
       const remaining = count - offset;
       const take = Math.min(pageSize, remaining);
       const start = Math.max(0, count - offset - take);
-      const end = count - offset;
 
       const page = await contract.getScoresSlice(start, take);
-      // page is ascending within [start, end); we want newest first in UI
       const pageNorm = (page || []).map(normalizeScore);
       const pageNewestFirst = pageNorm.reverse();
 
       setRows((prev) => [...prev, ...pageNewestFirst]);
-      setOffset(offset + take);
-      setHasMore(offset + take < count);
+      const newOffset = offset + take;
+      setOffset(newOffset);
+      setHasMore(newOffset < count);
     } catch (e) {
       console.error('Leaderboard load error:', e);
       setError(e);
     } finally {
       setLoading(false);
     }
-  }, [readProvider, makeContract, offset, pageSize, total, rows.length]);
+  }, [readProvider, makeContract, offset, pageSize, total]);
+
+  // 👇 Auto-prefetch until we have at least 10 distinct players (or 4 pages), so Top-10 fills in
+  const prefetchUntilTop10 = useCallback(async () => {
+    // avoid overlapping loads
+    if (loading || !readProvider) return;
+
+    // simple loop with caps
+    const MAX_EXTRA_PAGES = 4; // safety
+    let pagesFetched = 0;
+
+    const getDistinctPlayers = (arr) => {
+      const set = new Set();
+      for (const s of arr) set.add(String(s.player || '').toLowerCase());
+      return set.size;
+    };
+
+    // If we already have 10 unique players, stop
+    if (getDistinctPlayers(rows) >= 10 || !hasMore) return;
+
+    while (pagesFetched < MAX_EXTRA_PAGES) {
+      // eslint-disable-next-line no-await-in-loop
+      await loadPageOnce();
+      pagesFetched += 1;
+
+      if (getDistinctPlayers(rows) >= 10 || !hasMore) break;
+    }
+  }, [readProvider, rows, hasMore, loadPageOnce, loading]);
 
   const loadMore = useCallback(() => {
     if (!loading && hasMore) {
-      return loadPage();
+      return loadPageOnce();
     }
-  }, [loading, hasMore, loadPage]);
+  }, [loading, hasMore, loadPageOnce]);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(() => {
     reset();
-    // wait a tick so state resets before loading
-    setTimeout(() => {
-      loadPage();
+    // allow state to reset, then fetch first page and prefetch
+    setTimeout(async () => {
+      await loadPageOnce();
+      await prefetchUntilTop10();
     }, 0);
-  }, [reset, loadPage]);
+  }, [reset, loadPageOnce, prefetchUntilTop10]);
 
   // initial + whenever provider changes
   useEffect(() => {
     reset();
     if (readProvider) {
-      loadPage();
+      (async () => {
+        await loadPageOnce();
+        await prefetchUntilTop10();
+      })();
     }
-  }, [readProvider]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readProvider]);
 
   return { rows, total, loading, error, hasMore, loadMore, reload };
 }
