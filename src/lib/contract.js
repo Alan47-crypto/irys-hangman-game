@@ -1,40 +1,48 @@
 // src/lib/contract.js
 import { ethers } from 'ethers';
-import ABI from './abi/Leaderboard.json';
+import LeaderboardAbi from './abi/Leaderboard.json';
 
-export const IRYS_CHAIN_ID = '0x4f6';
-export const IRYS_RPC = 'https://testnet-rpc.irys.xyz/v1/execution-rpc';
-export const LEADERBOARD_ADDRESS = '0xB2E65Ee0A08B27Bf576B03Fe197ebf1DC2c0AF6D';
+export const CONTRACT_ADDRESS = '0xB2E65Ee0A08B27Bf576B03Fe197ebf1DC2c0AF6D';
+export const IRYS_CHAIN_ID_DEC = 1270;
+export const IRYS_CHAIN_HEX = '0x4f6';
 
-export function getReadProvider() {
-  return new ethers.JsonRpcProvider(IRYS_RPC);
+// You can override this in .env as VITE_IRYS_RPC (e.g. to "/api/rpc" if you use the proxy below)
+export const PUBLIC_RPC =
+  import.meta.env.VITE_IRYS_RPC || 'https://testnet-rpc.irys.xyz/v1/execution-rpc';
+
+// ---------- Write helpers (wallet signer) ----------
+export function getSignerAndContract(eip1193Provider) {
+  if (!eip1193Provider) return { signer: null, contract: null };
+  const browserProvider = new ethers.BrowserProvider(eip1193Provider);
+  const signer = browserProvider.getSigner();
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, LeaderboardAbi, signer);
+  return { signer, contract };
 }
 
-// Normalize anything (EIP-1193, ethers Provider, ethers Signer) into a valid runner
-export function normalizeRunner(providerOrSigner) {
-  if (!providerOrSigner) return getReadProvider();
+// ---------- Read providers ----------
+export function getWalletReadProvider(eip1193Provider) {
+  const prov = eip1193Provider || (typeof window !== 'undefined' ? window.ethereum : null);
+  if (!prov) return null;
+  return new ethers.BrowserProvider(prov);
+}
 
-  // If it's an ethers Signer (v6), it will have getAddress()
-  if (typeof providerOrSigner.getAddress === 'function') {
-    return providerOrSigner; // already a Signer
+// Prefer public JsonRpcProvider (works without wallet). If it fails (CORS), fallback to wallet.
+export function getPublicReadProvider() {
+  try {
+    const prov = new ethers.JsonRpcProvider(PUBLIC_RPC, {
+      chainId: IRYS_CHAIN_ID_DEC,
+      name: 'irys-testnet'
+    });
+    return prov;
+  } catch (e) {
+    console.warn('Failed to create public JsonRpcProvider:', e);
+    return null;
   }
-
-  // If it's a raw injected EIP-1193 provider from Web3-Onboard (has request)
-  if (typeof providerOrSigner.request === 'function') {
-    return new ethers.BrowserProvider(providerOrSigner);
-  }
-
-  // Otherwise assume it's already an ethers Provider
-  return providerOrSigner;
 }
 
-export function getContract(providerOrSigner) {
-  const runner = normalizeRunner(providerOrSigner);
-  return new ethers.Contract(LEADERBOARD_ADDRESS, ABI, runner);
-}
-
-// Convenience: get a Signer from a Web3-Onboard wallet (injected provider)
-export async function getSignerFromWallet(wallet) {
-  const browserProvider = new ethers.BrowserProvider(wallet.provider);
-  return await browserProvider.getSigner();
+// Single entrypoint the app should use for READS
+export function getReadProviderPreferPublic(eip1193Provider) {
+  const pub = getPublicReadProvider();
+  if (pub) return pub;
+  return getWalletReadProvider(eip1193Provider);
 }
