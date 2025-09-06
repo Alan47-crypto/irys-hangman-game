@@ -12,7 +12,7 @@ import { CONTRACT_ADDRESS } from '../lib/contract';
 export function useLeaderboard(readProvider, pageSize = 25) {
   const [rows, setRows] = useState([]);       // normalized Score[]
   const [total, setTotal] = useState(0);      // total on-chain count
-  const [offset, setOffset] = useState(0);    // next slice start (from newest end)
+  const [offset, setOffset] = useState(0);    // how many from the end we've loaded
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState(null);
   const [hasMore, setHasMore] = useState(false);
@@ -44,96 +44,105 @@ export function useLeaderboard(readProvider, pageSize = 25) {
     setError(null);
   }, []);
 
-  const loadPageOnce = useCallback(async () => {
-    if (!readProvider) return;
+  // ---- Strong reload: fetch enough pages in one pass to build a real Top-10 ----
+  const reload = useCallback(async () => {
+    const contract = makeContract();
+    if (!contract) return;
+
     setLoading(true);
     setError(null);
 
     try {
-      const contract = makeContract();
-      if (!contract) throw new Error('No read provider available');
-
-      // total rows
       const count = Number(await contract.getScoresCount());
-      if (count !== total) setTotal(count);
+      setTotal(count);
 
       if (count === 0) {
         setRows([]);
+        setOffset(0);
         setHasMore(false);
         return;
       }
 
-      // newest-first paging from the end of the array
+      const MAX_EXTRA_PAGES = 6; // safety cap
+      const acc = [];
+      const seen = new Set(); // distinct players
+      let nextOffset = 0;
+      let pagesFetched = 0;
+
+      while (nextOffset < count && pagesFetched < MAX_EXTRA_PAGES && seen.size < 10) {
+        const remaining = count - nextOffset;
+        const take = Math.min(pageSize, remaining);
+        const start = Math.max(0, count - nextOffset - take);
+
+        // fetch ascending slice, then flip to newest-first
+        // eslint-disable-next-line no-await-in-loop
+        const page = await contract.getScoresSlice(start, take);
+        const pageNorm = (page || []).map(normalizeScore).reverse();
+
+        for (const s of pageNorm) {
+          acc.push(s);
+          seen.add(String(s.player || '').toLowerCase());
+        }
+
+        nextOffset += take;
+        pagesFetched += 1;
+
+        if (seen.size >= 10) break;
+      }
+
+      setRows(acc);
+      setOffset(nextOffset);
+      setHasMore(nextOffset < count);
+    } catch (e) {
+      console.error('Leaderboard reload error:', e);
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [makeContract, pageSize]);
+
+  // ---- “Load more” just fetches one more page and appends ----
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore) return;
+    const contract = makeContract();
+    if (!contract) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const count = Number(await contract.getScoresCount());
+      setTotal(count);
+
+      if (offset >= count) {
+        setHasMore(false);
+        return;
+      }
+
       const remaining = count - offset;
       const take = Math.min(pageSize, remaining);
       const start = Math.max(0, count - offset - take);
 
       const page = await contract.getScoresSlice(start, take);
-      const pageNorm = (page || []).map(normalizeScore);
-      const pageNewestFirst = pageNorm.reverse();
+      const pageNorm = (page || []).map(normalizeScore).reverse();
 
-      setRows((prev) => [...prev, ...pageNewestFirst]);
+      setRows((prev) => [...prev, ...pageNorm]);
       const newOffset = offset + take;
       setOffset(newOffset);
       setHasMore(newOffset < count);
     } catch (e) {
-      console.error('Leaderboard load error:', e);
+      console.error('Leaderboard loadMore error:', e);
       setError(e);
     } finally {
       setLoading(false);
     }
-  }, [readProvider, makeContract, offset, pageSize, total]);
+  }, [makeContract, pageSize, offset, loading, hasMore]);
 
-  // 👇 Auto-prefetch until we have at least 10 distinct players (or 4 pages), so Top-10 fills in
-  const prefetchUntilTop10 = useCallback(async () => {
-    // avoid overlapping loads
-    if (loading || !readProvider) return;
-
-    // simple loop with caps
-    const MAX_EXTRA_PAGES = 4; // safety
-    let pagesFetched = 0;
-
-    const getDistinctPlayers = (arr) => {
-      const set = new Set();
-      for (const s of arr) set.add(String(s.player || '').toLowerCase());
-      return set.size;
-    };
-
-    // If we already have 10 unique players, stop
-    if (getDistinctPlayers(rows) >= 10 || !hasMore) return;
-
-    while (pagesFetched < MAX_EXTRA_PAGES) {
-      // eslint-disable-next-line no-await-in-loop
-      await loadPageOnce();
-      pagesFetched += 1;
-
-      if (getDistinctPlayers(rows) >= 10 || !hasMore) break;
-    }
-  }, [readProvider, rows, hasMore, loadPageOnce, loading]);
-
-  const loadMore = useCallback(() => {
-    if (!loading && hasMore) {
-      return loadPageOnce();
-    }
-  }, [loading, hasMore, loadPageOnce]);
-
-  const reload = useCallback(() => {
-    reset();
-    // allow state to reset, then fetch first page and prefetch
-    setTimeout(async () => {
-      await loadPageOnce();
-      await prefetchUntilTop10();
-    }, 0);
-  }, [reset, loadPageOnce, prefetchUntilTop10]);
-
-  // initial + whenever provider changes
+  // Initial load & when provider changes
   useEffect(() => {
     reset();
     if (readProvider) {
-      (async () => {
-        await loadPageOnce();
-        await prefetchUntilTop10();
-      })();
+      reload();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readProvider]);
