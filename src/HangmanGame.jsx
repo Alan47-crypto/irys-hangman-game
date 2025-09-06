@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import irynaMascot from './assets/iryna-mascot.png';
 
 // ✅ use the shared helpers (they contain your deployed address + ABI)
-import { getContract } from './lib/contract';
+import { getSignerAndContract } from './lib/contract';
 
 const wordList = [
   'ACCESSIBLE','ADDRESS','AGENTS','ARWEAVE','ASSET','AUTOMATION','BLOCK','BLOCKCHAIN','BYTES',
@@ -94,9 +94,8 @@ export function HangmanGame({ provider }) {
     setTxError(null);
     setTxStatus('pending');
     try {
-      const ethersProvider = new ethers.BrowserProvider(provider);
-      const signer = await ethersProvider.getSigner();
-      const contract = getContract(signer); // ✅ uses shared address + ABI
+      const { contract } = getSignerAndContract(provider); // ✅ new helper
+      if (!contract) throw new Error('Wallet not connected');
 
       const tx = await contract.addScore(word, points, solveTime);
       setStatusText('Waiting for confirmation...');
@@ -129,9 +128,8 @@ export function HangmanGame({ provider }) {
 
     setTxError(null);
     try {
-      const ethersProvider = new ethers.BrowserProvider(provider);
-      const signer = await ethersProvider.getSigner();
-      const contract = getContract(signer);
+      const { contract } = getSignerAndContract(provider); // ✅ new helper
+      if (!contract) throw new Error('Wallet not connected');
 
       const tx = await contract.recordLoss();
       await tx.wait();
