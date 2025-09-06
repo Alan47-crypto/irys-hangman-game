@@ -2,10 +2,11 @@
 import { useMemo, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useLeaderboard } from './hooks/useLeaderboard';
-import { getReadProvider } from './lib/contract';
+import { getReadProviderPreferPublic } from './lib/contract';
 
 export function Leaderboard({ provider }) {
-  const readProvider = getReadProvider();
+  // ✅ Prefer public RPC; fallback to wallet provider if public is blocked
+  const readProvider = useMemo(() => getReadProviderPreferPublic(provider), [provider]);
 
   const {
     rows,
@@ -19,19 +20,20 @@ export function Leaderboard({ provider }) {
 
   useEffect(() => {
     const handleReload = () => reload();
-    window.addEventListener('irys:leaderboard:reload', handleReload);
-    return () => window.removeEventListener('irys:leaderboard:reload', handleReload);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('irys:leaderboard:reload', handleReload);
+      return () => window.removeEventListener('irys:leaderboard:reload', handleReload);
+    }
   }, [reload]);
 
   const top10 = useMemo(() => {
     const map = new Map();
-    for (const s of rows) {
-      const addr = s.player.toLowerCase();
-      map.set(addr, (map.get(addr) || 0) + Number(s.points));
+    for (const s of rows || []) {
+      const addr = String(s.player || '').toLowerCase();
+      const pts = Number(s.points || 0);
+      map.set(addr, (map.get(addr) || 0) + pts);
     }
-    return [...map.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10);
+    return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
   }, [rows]);
 
   return (
@@ -51,7 +53,13 @@ export function Leaderboard({ provider }) {
     >
       <h2 className="leaderboard-title">Leaderboard</h2>
 
-      {error && (
+      {!readProvider && (
+        <p style={{ opacity: 0.8, marginTop: 8 }}>
+          Connect your wallet to view the leaderboard.
+        </p>
+      )}
+
+      {readProvider && error && (
         <div className="error-message" style={{ marginTop: 8 }}>
           Failed to load leaderboard: {String(error?.message || error)}
           <div style={{ marginTop: 8 }}>
@@ -62,7 +70,7 @@ export function Leaderboard({ provider }) {
         </div>
       )}
 
-      {!error && top10.length === 0 && !loading && (
+      {readProvider && !error && top10.length === 0 && !loading && (
         <p style={{ opacity: 0.8, marginTop: 8 }}>No scores yet.</p>
       )}
 
@@ -92,7 +100,7 @@ export function Leaderboard({ provider }) {
           </tbody>
         </table>
 
-        {hasMore && (
+        {readProvider && hasMore && (
           <div style={{ marginTop: 12 }}>
             <button className="connect-button" onClick={loadMore} disabled={loading}>
               {loading ? 'Loading…' : 'Load more'}
